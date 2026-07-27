@@ -43,6 +43,7 @@ function TaskRow({
   const [title, setTitle] = useState(task.title);
   const [units, setUnits] = useState(String(task.units));
   const [comment, setComment] = useState(task.comment ?? "");
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     setTitle(task.title);
@@ -67,17 +68,19 @@ function TaskRow({
   }
 
   return (
-    <article className={`task-row ${task.completed ? "completed" : ""}`}>
-      <label className="check">
-        <input
-          type="checkbox"
-          checked={task.completed}
-          onChange={(e) =>
-            onUpdateTask(task.id, { completed: e.target.checked })
-          }
-        />
-      </label>
-      <div className="task-fields">
+    <article
+      className={`task-row ${task.completed ? "completed" : ""} ${expanded ? "expanded" : ""}`}
+    >
+      <div className="task-main">
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={task.completed}
+            onChange={(e) =>
+              onUpdateTask(task.id, { completed: e.target.checked })
+            }
+          />
+        </label>
         <input
           className="task-title"
           value={title}
@@ -85,38 +88,47 @@ function TaskRow({
           onBlur={() => void commit()}
           aria-label="Task title"
         />
-        <div className="task-meta">
-          <label>
-            Units
-            <input
-              type="number"
-              min={1}
-              step={1}
-              value={units}
-              onChange={(e) => setUnits(e.target.value)}
-              onBlur={() => void commit()}
-            />
-            <span className="unit-hint">× 30 min</span>
-          </label>
-          <label className="comment-field">
-            Comment
-            <input
-              value={comment}
-              placeholder="Optional"
-              onChange={(e) => setComment(e.target.value)}
-              onBlur={() => void commit()}
-            />
-          </label>
+        <div className="task-units">
+          <input
+            type="number"
+            min={1}
+            step={1}
+            value={units}
+            onChange={(e) => setUnits(e.target.value)}
+            onBlur={() => void commit()}
+            aria-label="Units"
+          />
+          <span className="unit-hint">u</span>
         </div>
+        <button
+          type="button"
+          className="collapse-btn"
+          aria-label={expanded ? "Collapse task" : "Expand task"}
+          aria-expanded={expanded}
+          onClick={() => setExpanded((v) => !v)}
+        >
+          <span className={`chevron ${expanded ? "open" : ""}`}>›</span>
+        </button>
+        <button
+          type="button"
+          className="icon-btn danger"
+          aria-label="Delete task"
+          onClick={() => void onDeleteTask(task.id)}
+        >
+          ×
+        </button>
       </div>
-      <button
-        type="button"
-        className="icon-btn danger"
-        aria-label="Delete task"
-        onClick={() => void onDeleteTask(task.id)}
-      >
-        ×
-      </button>
+      {expanded && (
+        <label className="comment-field">
+          Comment
+          <input
+            value={comment}
+            placeholder="Optional"
+            onChange={(e) => setComment(e.target.value)}
+            onBlur={() => void commit()}
+          />
+        </label>
+      )}
     </article>
   );
 }
@@ -136,8 +148,23 @@ export function TaskPanel({
   const [units, setUnits] = useState("1");
   const [comment, setComment] = useState("");
   const [saving, setSaving] = useState(false);
+  const [adding, setAdding] = useState(false);
 
   const isSearching = searchQuery.trim().length > 0;
+
+  useEffect(() => {
+    setAdding(false);
+    setTitle("");
+    setUnits("1");
+    setComment("");
+  }, [day?.id]);
+
+  function resetAddForm() {
+    setTitle("");
+    setUnits("1");
+    setComment("");
+    setAdding(false);
+  }
 
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
@@ -149,9 +176,7 @@ export function TaskPanel({
         units: Math.max(1, Number.parseInt(units, 10) || 1),
         comment,
       });
-      setTitle("");
-      setUnits("1");
-      setComment("");
+      resetAddForm();
     } finally {
       setSaving(false);
     }
@@ -218,44 +243,65 @@ export function TaskPanel({
         </p>
       </header>
 
-      <form className="add-task" onSubmit={(e) => void handleCreate(e)}>
-        <div className="add-task-grid">
-          <label>
-            Task
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="What needs doing?"
-              required
-            />
-          </label>
-          <label>
-            Units
-            <input
-              type="number"
-              min={1}
-              step={1}
-              value={units}
-              onChange={(e) => setUnits(e.target.value)}
-            />
-          </label>
-          <label className="span-2">
-            Comment
-            <input
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder="Optional note"
-            />
-          </label>
-        </div>
+      {adding ? (
+        <form className="add-task" onSubmit={(e) => void handleCreate(e)}>
+          <div className="add-task-grid">
+            <label>
+              Task
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="What needs doing?"
+                required
+                autoFocus
+              />
+            </label>
+            <label>
+              Units
+              <input
+                type="number"
+                min={1}
+                step={1}
+                value={units}
+                onChange={(e) => setUnits(e.target.value)}
+              />
+            </label>
+            <label className="span-2">
+              Comment
+              <input
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Optional note"
+              />
+            </label>
+          </div>
+          <div className="btn-row">
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={saving || !title.trim()}
+            >
+              Add task
+            </button>
+            <button
+              type="button"
+              className="btn"
+              onClick={resetAddForm}
+              disabled={saving}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : (
         <button
-          type="submit"
-          className="btn btn-primary"
-          disabled={saving || !title.trim()}
+          type="button"
+          className="btn btn-primary add-task-toggle"
+          onClick={() => setAdding(true)}
         >
           Add task
         </button>
-      </form>
+      )}
 
       <div className="task-list">
         {tasks.length === 0 ? (

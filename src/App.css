@@ -96,7 +96,7 @@ code {
 
 .add-day label,
 .add-task label,
-.task-meta label {
+.comment-field {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
@@ -386,6 +386,10 @@ input:focus {
   color: var(--muted);
 }
 
+.add-task-toggle {
+  margin-bottom: 1.25rem;
+}
+
 .add-task {
   display: flex;
   flex-direction: column;
@@ -396,6 +400,7 @@ input:focus {
   background: var(--panel);
   box-shadow: var(--shadow);
   margin-bottom: 1.25rem;
+  animation: expandIn 180ms ease;
 }
 
 .add-task-grid {
@@ -411,15 +416,14 @@ input:focus {
 .task-list {
   display: flex;
   flex-direction: column;
-  gap: 0.7rem;
+  gap: 0.55rem;
 }
 
 .task-row {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 0.7rem;
-  align-items: start;
-  padding: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.55rem 0.75rem;
   border-radius: var(--radius);
   border: 1px solid var(--line);
   background: rgba(255, 252, 248, 0.72);
@@ -430,38 +434,51 @@ input:focus {
   opacity: 0.72;
 }
 
-.check {
-  padding-top: 0.35rem;
-}
-
-.task-fields {
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
+.task-main {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto auto;
+  align-items: center;
+  gap: 0.45rem;
   min-width: 0;
 }
 
+.check {
+  display: flex;
+  align-items: center;
+  padding: 0;
+}
+
 .task-title {
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-weight: 500;
   border: none !important;
   background: transparent !important;
   box-shadow: none !important;
-  padding-left: 0 !important;
+  padding: 0.25rem 0 !important;
+  min-width: 0;
 }
 
-.task-meta {
-  display: grid;
-  grid-template-columns: 140px 1fr;
-  gap: 0.7rem;
+.task-units {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.task-units input[type="number"] {
+  width: 3.25rem;
+  padding: 0.3rem 0.4rem;
+  text-align: center;
 }
 
 .unit-hint {
-  margin-left: 0.35rem;
   text-transform: none;
   letter-spacing: 0;
   color: var(--muted);
   font-size: 0.78rem;
+}
+
+.task-row .comment-field {
+  animation: expandIn 180ms ease;
 }
 
 .comment-field input {
@@ -613,7 +630,6 @@ input:focus {
     flex-wrap: wrap;
   }
 
-  .task-meta,
   .add-task-grid {
     grid-template-columns: 1fr;
   }

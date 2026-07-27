@@ -1,0 +1,29 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Capability for the main window",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "opener:default",
+    "dialog:default",
+    "store:default",
+    "sql:default",
+    {
+      "identifier": "sql:allow-execute",
+      "allow": [{ "name": "sqlite:daily-planner.db" }]
+    },
+    {
+      "identifier": "sql:allow-select",
+      "allow": [{ "name": "sqlite:daily-planner.db" }]
+    },
+    {
+      "identifier": "sql:allow-close",
+      "allow": [{ "name": "sqlite:daily-planner.db" }]
+    },
+    {
+      "identifier": "sql:allow-load",
+      "allow": [{ "name": "sqlite:daily-planner.db" }]
+    }
+  ]
+}

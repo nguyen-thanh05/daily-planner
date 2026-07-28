@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { DayList } from "./components/DayList";
 import { SearchBar } from "./components/SearchBar";
 import { Settings } from "./components/Settings";
@@ -33,7 +32,6 @@ function App() {
   const [lastSyncAt, setLastSyncAtState] = useState<string | null>(null);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const syncInFlight = useRef<Promise<void> | null>(null);
-  const closingRef = useRef(false);
 
   const refresh = useCallback(async (preferSelectedId?: string | null) => {
     const [nextDays, nextTasks, completed] = await Promise.all([
@@ -114,29 +112,6 @@ function App() {
       cancelled = true;
     };
   }, [refresh]);
-
-  useEffect(() => {
-    let unlisten: (() => void) | undefined;
-    let cancelled = false;
-
-    (async () => {
-      try {
-        unlisten = await getCurrentWindow().onCloseRequested(async () => {
-          if (closingRef.current) return;
-          closingRef.current = true;
-          await syncQuietly();
-        });
-        if (cancelled) unlisten();
-      } catch {
-        // Not running under Tauri (e.g. vite browser) — skip close sync.
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      unlisten?.();
-    };
-  }, [syncQuietly]);
 
   useEffect(() => {
     let cancelled = false;

@@ -149,14 +149,18 @@ export function TaskPanel({
   const [comment, setComment] = useState("");
   const [saving, setSaving] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [doneOpen, setDoneOpen] = useState(false);
 
   const isSearching = searchQuery.trim().length > 0;
+  const openTasks = tasks.filter((t) => !t.completed);
+  const doneTasks = tasks.filter((t) => t.completed);
 
   useEffect(() => {
     setAdding(false);
     setTitle("");
     setUnits("1");
     setComment("");
+    setDoneOpen(false);
   }, [day?.id]);
 
   function resetAddForm() {
@@ -306,8 +310,10 @@ export function TaskPanel({
       <div className="task-list">
         {tasks.length === 0 ? (
           <p className="empty-hint">No tasks for this day yet.</p>
+        ) : openTasks.length === 0 ? (
+          <p className="empty-hint">All tasks done for this day.</p>
         ) : (
-          tasks.map((task) => (
+          openTasks.map((task) => (
             <TaskRow
               key={task.id}
               task={task}
@@ -317,6 +323,32 @@ export function TaskPanel({
           ))
         )}
       </div>
+
+      {doneTasks.length > 0 && (
+        <section className="done-section">
+          <button
+            type="button"
+            className="done-toggle"
+            aria-expanded={doneOpen}
+            onClick={() => setDoneOpen((v) => !v)}
+          >
+            <span className={`chevron ${doneOpen ? "open" : ""}`}>›</span>
+            Done ({doneTasks.length})
+          </button>
+          {doneOpen && (
+            <div className="task-list done-list">
+              {doneTasks.map((task) => (
+                <TaskRow
+                  key={task.id}
+                  task={task}
+                  onUpdateTask={onUpdateTask}
+                  onDeleteTask={onDeleteTask}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
     </section>
   );
 }

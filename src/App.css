@@ -434,6 +434,42 @@ input:focus {
   opacity: 0.72;
 }
 
+.task-row.completed .task-title {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+.done-section {
+  margin-top: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.done-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  align-self: start;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.2rem 0;
+  cursor: pointer;
+}
+
+.done-toggle:hover {
+  color: var(--ink);
+}
+
+.done-list {
+  padding-left: 0.15rem;
+}
+
 .task-main {
   display: grid;
   grid-template-columns: auto 1fr auto auto auto;

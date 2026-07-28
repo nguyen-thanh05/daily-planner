@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { DayList } from "./components/DayList";
 import { SearchBar } from "./components/SearchBar";
 import { Settings } from "./components/Settings";
@@ -31,6 +32,8 @@ function App() {
   const [syncFolder, setSyncFolderState] = useState<string | null>(null);
   const [lastSyncAt, setLastSyncAtState] = useState<string | null>(null);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  const syncInFlight = useRef<Promise<void> | null>(null);
+  const closingRef = useRef(false);
 
   const refresh = useCallback(async (preferSelectedId?: string | null) => {
     const [nextDays, nextTasks, completed] = await Promise.all([
@@ -49,6 +52,27 @@ function App() {
       }
       return nextDays[0]?.id ?? null;
     });
+  }, []);
+
+  const syncQuietly = useCallback(async () => {
+    const prior = syncInFlight.current;
+    const run = (async () => {
+      if (prior) await prior.catch(() => undefined);
+      try {
+        const result = await syncNow();
+        setLastSyncAtState(result.at);
+        setSyncFolderState(result.folder);
+        setSyncMessage(`Synced ${new Date(result.at).toLocaleTimeString()}`);
+      } catch (err) {
+        setSyncMessage(err instanceof Error ? err.message : String(err));
+      }
+    })();
+    syncInFlight.current = run;
+    try {
+      await run;
+    } finally {
+      if (syncInFlight.current === run) syncInFlight.current = null;
+    }
   }, []);
 
   useEffect(() => {
@@ -90,6 +114,29 @@ function App() {
       cancelled = true;
     };
   }, [refresh]);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        unlisten = await getCurrentWindow().onCloseRequested(async () => {
+          if (closingRef.current) return;
+          closingRef.current = true;
+          await syncQuietly();
+        });
+        if (cancelled) unlisten();
+      } catch {
+        // Not running under Tauri (e.g. vite browser) — skip close sync.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, [syncQuietly]);
 
   useEffect(() => {
     let cancelled = false;
@@ -164,6 +211,7 @@ function App() {
       comment: input.comment,
     });
     await refresh(selectedDay.id);
+    await syncQuietly();
   }
 
   async function handleUpdateTask(
@@ -172,15 +220,20 @@ function App() {
   ) {
     await db.updateTask(id, patch);
     await refresh(selectedDayId);
+    if ("completed" in patch) {
+      await syncQuietly();
+    }
   }
 
   async function handleDeleteTask(id: string) {
     await db.deleteTask(id);
     await refresh(selectedDayId);
+    await syncQuietly();
   }
 
   async function handleQuickSync() {
     try {
+      if (syncInFlight.current) await syncInFlight.current;
       const result = await syncNow();
       setLastSyncAtState(result.at);
       setSyncFolderState(result.folder);

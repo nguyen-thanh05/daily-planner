@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { DayList } from "./components/DayList";
 import { SearchBar } from "./components/SearchBar";
 import { Settings } from "./components/Settings";
@@ -31,7 +31,6 @@ function App() {
   const [syncFolder, setSyncFolderState] = useState<string | null>(null);
   const [lastSyncAt, setLastSyncAtState] = useState<string | null>(null);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
-  const syncInFlight = useRef<Promise<void> | null>(null);
 
   const refresh = useCallback(async (preferSelectedId?: string | null) => {
     const [nextDays, nextTasks, completed] = await Promise.all([
@@ -53,25 +52,16 @@ function App() {
   }, []);
 
   const syncQuietly = useCallback(async () => {
-    const prior = syncInFlight.current;
-    const run = (async () => {
-      if (prior) await prior.catch(() => undefined);
-      try {
-        const result = await syncNow();
-        setLastSyncAtState(result.at);
-        setSyncFolderState(result.folder);
-        setSyncMessage(`Synced ${new Date(result.at).toLocaleTimeString()}`);
-      } catch (err) {
-        setSyncMessage(err instanceof Error ? err.message : String(err));
-      }
-    })();
-    syncInFlight.current = run;
     try {
-      await run;
-    } finally {
-      if (syncInFlight.current === run) syncInFlight.current = null;
+      const result = await syncNow();
+      await refresh();
+      setLastSyncAtState(result.at);
+      setSyncFolderState(result.folder);
+      setSyncMessage(`Synced ${new Date(result.at).toLocaleTimeString()}`);
+    } catch (err) {
+      setSyncMessage(err instanceof Error ? err.message : String(err));
     }
-  }, []);
+  }, [refresh]);
 
   useEffect(() => {
     let cancelled = false;
@@ -157,11 +147,13 @@ function App() {
     if (!newDate) return;
     const day = await db.createDay(newDate);
     await refresh(day.id);
+    await syncQuietly();
   }
 
   async function handleToggleCollapse(day: Day) {
     await db.toggleDayCollapsed(day.id, !day.collapsed);
     await refresh(selectedDayId);
+    await syncQuietly();
   }
 
   async function handleDeleteDay(day: Day) {
@@ -171,6 +163,7 @@ function App() {
     if (!ok) return;
     await db.deleteDay(day.id);
     await refresh(null);
+    await syncQuietly();
   }
 
   async function handleCreateTask(input: {
@@ -195,9 +188,7 @@ function App() {
   ) {
     await db.updateTask(id, patch);
     await refresh(selectedDayId);
-    if ("completed" in patch) {
-      await syncQuietly();
-    }
+    await syncQuietly();
   }
 
   async function handleDeleteTask(id: string) {
@@ -208,7 +199,6 @@ function App() {
 
   async function handleQuickSync() {
     try {
-      if (syncInFlight.current) await syncInFlight.current;
       const result = await syncNow();
       setLastSyncAtState(result.at);
       setSyncFolderState(result.folder);

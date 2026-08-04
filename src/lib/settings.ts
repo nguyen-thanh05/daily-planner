@@ -3,6 +3,7 @@ import { Store } from "@tauri-apps/plugin-store";
 const STORE_FILE = "settings.json";
 const SYNC_FOLDER_KEY = "syncFolder";
 const LAST_SYNC_KEY = "lastSyncAt";
+const SYNC_DEVICE_ID_KEY = "syncDeviceId";
 
 let storePromise: Promise<Store> | null = null;
 
@@ -35,4 +36,17 @@ export async function setLastSyncAt(iso: string): Promise<void> {
   const store = await getStore();
   await store.set(LAST_SYNC_KEY, iso);
   await store.save();
+}
+
+export async function getOrCreateSyncDeviceId(): Promise<string> {
+  const store = await getStore();
+  const existing = await store.get<string>(SYNC_DEVICE_ID_KEY);
+  if (existing && /^[a-zA-Z0-9_-]+$/.test(existing)) {
+    return existing;
+  }
+
+  const id = crypto.randomUUID();
+  await store.set(SYNC_DEVICE_ID_KEY, id);
+  await store.save();
+  return id;
 }

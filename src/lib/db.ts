@@ -1,5 +1,6 @@
 import Database from "@tauri-apps/plugin-sql";
 import type { Day, Task } from "../types";
+import { dayIdForDate } from "./sync-core";
 
 let dbPromise: Promise<Database> | null = null;
 
@@ -149,7 +150,7 @@ export async function createDay(date: string): Promise<Day> {
   }
 
   const day: Day = {
-    id: newId(),
+    id: dayIdForDate(date),
     date,
     collapsed: false,
     created_at: nowIso(),
@@ -286,27 +287,7 @@ export async function deleteTask(id: string): Promise<void> {
   );
 }
 
-export async function upsertDayFromSync(day: Day): Promise<void> {
-  const db = await getDb();
-  let next = day;
-
-  // If another day row owns the same calendar date, keep the newer one.
-  const sameDate = await db.select<Record<string, unknown>[]>(
-    `SELECT * FROM days WHERE date = $1 AND id != $2`,
-    [next.date, next.id],
-  );
-  for (const row of sameDate) {
-    const other = mapDay(row);
-    if (next.updated_at >= other.updated_at) {
-      await db.execute(
-        `UPDATE days SET deleted_at = $1, updated_at = $1 WHERE id = $2`,
-        [next.updated_at, other.id],
-      );
-    } else if (!next.deleted_at) {
-      next = { ...next, deleted_at: other.updated_at };
-    }
-  }
-
+async function writeDayFromSync(db: Database, day: Day): Promise<void> {
   await db.execute(
     `INSERT INTO days (id, date, collapsed, created_at, updated_at, deleted_at)
      VALUES ($1, $2, $3, $4, $5, $6)
@@ -317,14 +298,42 @@ export async function upsertDayFromSync(day: Day): Promise<void> {
        updated_at = excluded.updated_at,
        deleted_at = excluded.deleted_at`,
     [
-      next.id,
-      next.date,
-      next.collapsed ? 1 : 0,
-      next.created_at,
-      next.updated_at,
-      next.deleted_at,
+      day.id,
+      day.date,
+      day.collapsed ? 1 : 0,
+      day.created_at,
+      day.updated_at,
+      day.deleted_at,
     ],
   );
+}
+
+export async function upsertDayFromSync(day: Day): Promise<string> {
+  const db = await getDb();
+  const sameDate = await db.select<{ id: string }[]>(
+    `SELECT id FROM days WHERE date = $1 AND id != $2`,
+    [day.date, day.id],
+  );
+
+  if (sameDate.length === 0) {
+    await writeDayFromSync(db, day);
+    return day.id;
+  }
+
+  const localId = sameDate[0].id;
+  await db.execute(
+    `UPDATE days
+     SET collapsed = $1, created_at = $2, updated_at = $3, deleted_at = $4
+     WHERE id = $5`,
+    [
+      day.collapsed ? 1 : 0,
+      day.created_at,
+      day.updated_at,
+      day.deleted_at,
+      localId,
+    ],
+  );
+  return localId;
 }
 
 export async function upsertTaskFromSync(task: Task): Promise<void> {

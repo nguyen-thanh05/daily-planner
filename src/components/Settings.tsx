@@ -129,8 +129,10 @@ export function Settings({
             <h3>OneDrive sync folder</h3>
             <p className="muted">
               Create <code>DailyPlannerSync</code> inside OneDrive on both Mac
-              and Windows, then choose that folder here. The app merges{" "}
-              <code>{SYNC_FILE_NAME}</code> — not the live database.
+              and Windows, then choose that folder here. Each device writes its
+              own sync snapshot and merges snapshots from the other devices —
+              never the live database. Existing <code>{SYNC_FILE_NAME}</code>{" "}
+              files are imported automatically.
             </p>
             <p className="path-display">{syncFolder ?? "No folder selected"}</p>
             <div className="btn-row">

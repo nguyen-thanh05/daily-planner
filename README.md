@@ -7,7 +7,7 @@ Cross-platform desktop app (macOS + Windows) for planning daily tasks. Each devi
 - Left sidebar: create days, collapse/expand to preview tasks, completed-task total
 - Main panel: task title, time units (1 unit ≈ 30 minutes), optional comment, complete/edit/delete
 - Search across task titles and comments
-- OneDrive folder sync via `daily-planner-sync.json` (last-write-wins by `updated_at`)
+- OneDrive folder sync via per-device JSON snapshots (record conflicts use `updated_at`)
 - Manual JSON export / import backup
 
 ## Requirements
@@ -39,12 +39,18 @@ Artifacts land in `src-tauri/target/release/bundle/`.
 2. Create a folder named `DailyPlannerSync` in your OneDrive root.
 3. Open **Daily Planner → Settings → Choose folder** and select that folder on each device.
 4. Click **Sync now** (or reopen the app — it syncs on launch when a folder is set).
-5. After editing on one machine, wait for OneDrive to finish uploading/downloading, then sync on the other.
+5. Planner changes automatically update that device's snapshot. After OneDrive
+   finishes uploading/downloading, reopen or sync on the other device to pull
+   the changes.
 
-The app never puts the live SQLite file in OneDrive. Only `daily-planner-sync.json` is shared, which avoids database corruption from cloud file sync.
+The app never puts the live SQLite file in OneDrive. Each installation writes
+only its own `daily-planner-sync-<device-id>.json` and merges all device
+snapshots, so simultaneous or delayed OneDrive updates cannot overwrite another
+device's data. Older `daily-planner-sync.json` files are still read for
+automatic migration.
 
 ## Data
 
 - Local DB: app data directory, file `daily-planner.db`
-- Settings (sync folder path, last sync time): `settings.json` in app data
-- Sync file: `DailyPlannerSync/daily-planner-sync.json`
+- Settings (sync folder path, device ID, last sync time): `settings.json` in app data
+- Sync files: `DailyPlannerSync/daily-planner-sync-<device-id>.json`
